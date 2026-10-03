@@ -1,4 +1,4 @@
-﻿"""
+"""
 File: test_database_enhancement.py
 Author: Michael Rodman
 Date: October 2, 2026
@@ -131,6 +131,75 @@ class TestDatabaseEnhancement(unittest.TestCase):
 
         self.assertEqual(result, 0)
         collection.delete_many.assert_not_called()
+
+    def test_create_inserts_valid_document(self):
+        """Create should insert a valid animal document."""
+
+        shelter, collection = self.create_shelter()
+
+        collection.insert_one.return_value.inserted_id = "12345"
+
+        animal = {
+            "animal_type": "Dog",
+            "name": "Test Dog"
+        }
+
+        result = shelter.create(animal)
+
+        self.assertTrue(result)
+        collection.insert_one.assert_called_once_with(animal)
+
+    def test_read_returns_matching_documents(self):
+        """Read should return documents supplied by MongoDB."""
+
+        shelter, collection = self.create_shelter()
+
+        expected = [
+            {"animal_type": "Dog", "name": "Alpha"},
+            {"animal_type": "Dog", "name": "Bravo"}
+        ]
+
+        collection.find.return_value = iter(expected)
+
+        result = shelter.read({"animal_type": "Dog"})
+
+        self.assertEqual(result, expected)
+        collection.find.assert_called_once_with(
+            {"animal_type": "Dog"},
+            None
+        )
+
+    def test_update_modifies_matching_documents(self):
+        """Update should return MongoDB's modified document count."""
+
+        shelter, collection = self.create_shelter()
+
+        collection.update_many.return_value.modified_count = 2
+
+        result = shelter.update(
+            {"animal_type": "Dog"},
+            {"status": "Rescue Candidate"}
+        )
+
+        self.assertEqual(result, 2)
+        collection.update_many.assert_called_once_with(
+            {"animal_type": "Dog"},
+            {"$set": {"status": "Rescue Candidate"}}
+        )
+
+    def test_delete_removes_matching_documents(self):
+        """Delete should return MongoDB's deleted document count."""
+
+        shelter, collection = self.create_shelter()
+
+        collection.delete_many.return_value.deleted_count = 3
+
+        result = shelter.delete({"status": "Archived"})
+
+        self.assertEqual(result, 3)
+        collection.delete_many.assert_called_once_with(
+            {"status": "Archived"}
+        )
 
 
 if __name__ == "__main__":
